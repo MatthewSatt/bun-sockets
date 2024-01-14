@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SideChat</title>
+    <style>
+      body,
+      html {
+        height: 100%;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        font-family: Arial, sans-serif;
+        background: #f5f5f5;
+      }
+
+      .main-container {
+        flex: 1;
+        display: flex;
+      }
+
+      .left-chat-panel {
+        flex: 1;
+        background-color: #ffffff;
+        border-right: 1px solid #ccc;
+        overflow-y: auto;
+        min-width: 250px;
+      }
+
+      .main-chat-section {
+        flex: 4;
+        background-color: #f0f0f0;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+      }
+
+      .user-container {
+        cursor: pointer;
+        padding: 10px;
+        border-bottom: 1px solid #ccc;
+        background: linear-gradient(
+          to bottom,
+          #3498db,
+          #2980b9
+        );
+        color: white;
+        transition: background-color 0.3s ease;
+      }
+
+      .user-container:hover {
+        background-color: #e0e0e0;
+      }
+
+      /* Styles for the chat messages container */
+      .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 10px;
+        border-bottom: 1px solid #ccc;
+      }
+
+      .chat-input-container {
+        display: flex;
+        padding: 10px;
+        background-color: #ffffff;
+        position: absolute;
+        bottom: 0;
+        width: 99%;
+      }
+
+      .chat-message {
+        margin-bottom: 15px;
+        padding: 10px;
+        background-color: #f0f0f0;
+        border-radius: 5px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        color: #333;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .author {
+        font-weight: bold;
+        margin-bottom: 5px;
+      }
+
+      .content {
+        margin-bottom: 5px;
+      }
+
+      .timestamp {
+        font-size: 0.8rem;
+        color: #777;
+      }
+
+      .chat-input {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+      }
+
+      .chat-submit {
+        padding: 10px 20px;
+        background-color: #3498db;
+        color: #ffffff;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+
+      .chat-submit:hover {
+        background-color: #2980b9;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="main-container">
+      <div class="left-chat-panel"></div>
+      <div class="main-chat-section">
+        <div class="chat-messages"></div>
+        <div class="chat-input-container">
+          <input class="chat-input" id="message-input" placeholder="Message" />
+          <button class="chat-submit" id="submit-button">Submit</button>
+        </div>
+      </div>
+    </div>
+    <script>
+      // Function to establish a WebSocket connection
+      const socket = new WebSocket("ws://localhost:8000");
+
+      socket.addEventListener("open", function (event) {
+        console.log("WebSocket connection established");
+      });
+
+      socket.addEventListener("message", function (event) {
+        let message = JSON.parse(event.data);
+        let type = message.type;
+
+        switch (type) {
+          case "UPDATE":
+            updateConnections(message.connections);
+            break;
+          case "CHAT":
+            addChatMessage(message);
+            break;
+
+          default:
+            console.log("Unknown message type");
+        }
+      });
+
+      socket.addEventListener("close", function (event) {
+        console.log("Disconnected from WebSocket server");
+      });
+
+      socket.addEventListener("error", function (error) {
+        console.error("WebSocket error:", error);
+      });
+
+      function updateConnections(connections) {
+        let chatPanel = document.querySelector(".left-chat-panel");
+        chatPanel.innerHTML = null;
+
+        for (let i = 0; i < connections.length; i++) {
+          let connection = connections[i];
+          let userContainer = document.createElement("div");
+          userContainer.id = connection.id;
+          userContainer.innerText = connection.name;
+          userContainer.classList.add("user-container");
+          chatPanel.appendChild(userContainer);
+        }
+      }
+
+      function addChatMessage(message) {
+        let chatContainer = document.querySelector(".chat-messages");
+        let chat = document.createElement("div");
+        chat.classList.add("chat-message");
+
+        let author = document.createElement("div");
+        author.innerText = message.author;
+        author.classList.add("author")
+        let content = document.createElement("div");
+        content.innerText = message.content;
+        content.classList.add("content");
+        let date = document.createElement("div");
+        date.classList.add("timestamp");
+        date.innerText = message.date;
+
+        chat.appendChild(author);
+        chat.appendChild(content);
+        chat.appendChild(date);
+
+        chatContainer.appendChild(chat);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+      }
+
+      function handleSubmit() {
+        const messageInput = document.getElementById("message-input");
+        const message = messageInput.value;
+        console.log("Submitted message:", message);
+        const newChat = JSON.stringify({
+          type: "CHAT",
+          content: message,
+        });
+
+        socket.send(newChat);
+        messageInput.value = "";
+      }
+
+      const submitButton = document.getElementById("submit-button");
+      submitButton.addEventListener("click", handleSubmit);
+
+      const messageInput = document.getElementById("message-input");
+      messageInput.addEventListener("keyup", function (event) {
+        if (event.key === "Enter") {
+          handleSubmit();
+        }
+      });
+    </script>
+  </body>
+</html>
