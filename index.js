@@ -9,7 +9,7 @@ const server = serve({
     if (server.upgrade(request)) {
       return new Response(null, { status: 101 });
     }
-    return new Response(file("index.html"), {
+    return new Response(await file("index.html"), {
       headers: { "Content-Type": "text/html" },
     });
   },
@@ -19,44 +19,59 @@ const server = serve({
       ws.name = generateRandomName();
       connections.push(ws);
 
-      connections.forEach((connection) => {
-        const newUserMessage = JSON.stringify({
-          type: "UPDATE",
-          connections: connections,
-        });
-        connection.send(newUserMessage);
-      });
+      // Notify all clients about the updated connections
+      updateConnections();
     },
 
     message(ws, message) {
-        try {
-          let parsedMessage = JSON.parse(message);
-          let type = parsedMessage.type;
+      try {
+        const parsedMessage = JSON.parse(message);
+        const type = parsedMessage.type;
 
-          switch(type) {
-            case "CHAT":
-              sendChatMessage(ws, parsedMessage);
-              break;
-          }
-        } catch (error) {
-          console.error("Error parsing message:", error);
+        switch (type) {
+          case "CHAT":
+            sendChatMessage(ws, parsedMessage);
+            break;
+          default:
+            console.warn("Unknown message type:", type);
+            break;
         }
-      },
+      } catch (error) {
+        console.error("Error parsing message:", error);
+      }
+    },
 
-    closed(ws) {
-      console.log("WebSocket connection closed");
-      const index = connections.findIndex(
-        (connection) => connection.id === ws.id
-      );
+    close(ws) {
+      console.log(`WebSocket connection closed: ${ws.id}`);
+      const index = connections.findIndex((conn) => conn.id === ws.id);
       if (index !== -1) {
         connections.splice(index, 1);
       }
+
+      // Notify all clients about the updated connections
+      updateConnections();
     },
   },
 });
 
 console.log(`Server running on http://localhost:${server.port}`);
 
+// Helper function to update all clients with the list of connections
+function updateConnections() {
+  const updateMessage = JSON.stringify({
+    type: "UPDATE",
+    connections: connections.map((conn) => ({
+      id: conn.id,
+      name: conn.name,
+    })),
+  });
+
+  connections.forEach((connection) => {
+    connection.send(updateMessage);
+  });
+}
+
+// Helper function to generate random names
 function generateRandomName() {
   const adjectives = [
     "Red",
@@ -87,18 +102,20 @@ function generateRandomName() {
   return randomAdjective + randomNoun;
 }
 
-const sendChatMessage = (ws, message) => {
-    let author = ws.name;
-    let content = message.content;
-    let date = new Date().toLocaleDateString();
+// Helper function to send chat messages
+function sendChatMessage(ws, message) {
+  const author = ws.name;
+  const content = message.content;
+  const date = new Date().toLocaleDateString();
 
-    connections.forEach((connection) => {
-        const newChat = JSON.stringify({
-          type: "CHAT",
-          author: author,
-          content: content,
-          date: date
-        });
-        connection.send(newChat);
-      });
+  const chatMessage = JSON.stringify({
+    type: "CHAT",
+    author,
+    content,
+    date,
+  });
+
+  connections.forEach((connection) => {
+    connection.send(chatMessage);
+  });
 }
