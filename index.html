@@ -32,7 +32,6 @@
       .main-chat-section {
         flex: 4;
         background-color: #f0f0f0;
-        overflow-y: auto;
         display: flex;
         flex-direction: column;
         position: relative;
@@ -42,11 +41,7 @@
         cursor: pointer;
         padding: 10px;
         border-bottom: 1px solid #ccc;
-        background: linear-gradient(
-          to bottom,
-          #3498db,
-          #2980b9
-        );
+        background: linear-gradient(to bottom, #3498db, #2980b9);
         color: white;
         transition: background-color 0.3s ease;
       }
@@ -55,11 +50,12 @@
         background-color: #e0e0e0;
       }
 
-      /* Styles for the chat messages container */
       .chat-messages {
         flex: 1;
         overflow-y: auto;
         padding: 10px;
+        display: flex;
+        flex-direction: column;
         border-bottom: 1px solid #ccc;
       }
 
@@ -67,9 +63,6 @@
         display: flex;
         padding: 10px;
         background-color: #ffffff;
-        position: absolute;
-        bottom: 0;
-        width: 99%;
       }
 
       .chat-message {
@@ -122,10 +115,14 @@
     <div class="main-container">
       <div class="left-chat-panel"></div>
       <div class="main-chat-section">
-        <div class="chat-messages"></div>
+        <div class="chat-messages" id="chat-messages"></div>
         <div class="chat-input-container">
           <input class="chat-input" id="message-input" placeholder="Message" />
           <button class="chat-submit" id="submit-button">Submit</button>
+          <button class="chat-submit" id="spam-button" style="margin-left: 1px">
+            Send 100 Messages
+          </button>
+          <!-- New Button -->
         </div>
       </div>
     </div>
@@ -183,7 +180,7 @@
 
         let author = document.createElement("div");
         author.innerText = message.author;
-        author.classList.add("author")
+        author.classList.add("author");
         let content = document.createElement("div");
         content.innerText = message.content;
         content.classList.add("content");
@@ -196,7 +193,7 @@
         chat.appendChild(date);
 
         chatContainer.appendChild(chat);
-        chatContainer.scrollTop = chatContainer.scrollHeight;
+        chatContainer.scrollTop = chatContainer.scrollHeight; // Scroll to the bottom
       }
 
       function handleSubmit() {
@@ -211,6 +208,20 @@
         socket.send(newChat);
         messageInput.value = "";
       }
+
+      function sendSpamMessages() {
+        for (let i = 1; i <= 100; i++) {
+          const spamMessage = JSON.stringify({
+            type: "CHAT",
+            content: `Spam message ${i}`,
+          });
+          socket.send(spamMessage);
+        }
+        console.log("Sent 100 spam messages");
+      }
+
+      const spamButton = document.getElementById("spam-button");
+      spamButton.addEventListener("click", sendSpamMessages); // Bind the spam button
 
       const submitButton = document.getElementById("submit-button");
       submitButton.addEventListener("click", handleSubmit);
